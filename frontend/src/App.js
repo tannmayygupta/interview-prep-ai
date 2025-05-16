@@ -1,3 +1,4 @@
+// App.js
 import {
   SignIn,
   SignUp,
@@ -7,6 +8,7 @@ import {
   UserButton,
 } from "@clerk/clerk-react";
 import { Routes, Route } from "react-router-dom";
+import LandingPage from "./components/LandingPage";
 
 function ProtectedPage() {
   return (
@@ -33,6 +35,10 @@ function RequireAuth({ children }) {
 function App() {
   return (
     <Routes>
+      {/* Landing Page Route */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* Clerk Auth Routes */}
       <Route
         path="/sign-in"
         element={
@@ -49,8 +55,10 @@ function App() {
           </div>
         }
       />
+
+      {/* Protected Dashboard Route */}
       <Route
-        path="/"
+        path="/dashboard"
         element={
           <RequireAuth>
             <ProtectedPage />
