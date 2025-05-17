@@ -1,150 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import { UserButton, SignedIn, SignedOut, SignInButton, useUser } from '@clerk/clerk-react';
 import { PlusCircle } from 'lucide-react';
+import axios from 'axios';
+import io from 'socket.io-client';
+
+// Connect to backend WebSocket
+const socket = io('http://localhost:5050', { withCredentials: true });
 
 const Dashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
-  const { user } = useUser(); // Get current user info from Clerk
-
-  // Predefined interview sessions to match the screenshot
-  const [sessions, setSessions] = useState([
-    {
-      id: 'FD',
-      role: 'Frontend Developer',
-      topics: 'React.js, DOM manipulation, CSS Flexbox',
-      experience: '2 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Preparing for product-based company interviews',
-      color: 'mint'
-    },
-    {
-      id: 'BD',
-      role: 'Backend Developer',
-      topics: 'Node.js, Express, REST APIs, MongoDB',
-      experience: '3 Years',
-      qaCount: 20,
-      updatedAt: '1st May 2025',
-      description: 'Want to master backend system design and performance',
-      color: 'cream'
-    },
-    {
-      id: 'FS',
-      role: 'Full Stack Developer',
-      topics: 'MERN stack, deployment strategies, authentication',
-      experience: '4 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Getting ready for startup tech rounds',
-      color: 'light-blue'
-    },
-    {
-      id: 'DA',
-      role: 'Data Analyst',
-      topics: 'SQL, Excel, Data Visualization, Power BI',
-      experience: '2 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Targeting analyst roles in finance domain',
-      color: 'peach'
-    },
-    {
-      id: 'DE',
-      role: 'DevOps Engineer',
-      topics: 'CI/CD, Docker, Kubernetes, AWS',
-      experience: '5 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Switching to a cloud-native role with more automation',
-      color: 'light-blue'
-    },
-    {
-      id: 'UD',
-      role: 'UI/UX Designer',
-      topics: 'Figma, user journey, wireframing, accessibility',
-      experience: '3 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Preparing for top product design interviews',
-      color: 'lavender'
-    },
-    {
-      id: 'MA',
-      role: 'Mobile App Developer',
-      topics: 'React Native, Flutter, performance optimization',
-      experience: '2 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Need cross-platform expertise for startup interviews',
-      color: 'pink'
-    },
-    {
-      id: 'AE',
-      role: 'AI/ML Engineer',
-      topics: 'Python, scikit-learn, model deployment, NLP',
-      experience: '1 Year',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Cracking ML internship and entry-level roles',
-      color: 'mint'
-    },
-    {
-      id: 'PM',
-      role: 'Product Manager',
-      topics: 'Roadmapping, user stories, KPIs, stakeholder communication',
-      experience: '4 Years',
-      qaCount: 10,
-      updatedAt: '30th Apr 2025',
-      description: 'Pivoting into tech PM from business analyst background',
-      color: 'lavender'
-    }
-  ]);
-
+  const { user } = useUser();
+  const [sessions, setSessions] = useState([]);
   const [form, setForm] = useState({
     role: '',
     experience: '',
-    topics: '',
+    topic: '',
     description: ''
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Generate ID from role (first two letters)
-    const generateId = () => {
-      if (!form.role) return '';
-      const words = form.role.split(' ');
-      if (words.length >= 2) {
-        return (words[0][0] + words[1][0]).toUpperCase();
-      }
-      return form.role.substring(0, 2).toUpperCase();
-    };
+  // Fetch chats and set up Socket.IO listener
+  useEffect(() => {
+    if (user) {
+      fetchChats();
+      socket.on('newChat', (newChat) => {
+        if (newChat.userId === user.id) {
+          setSessions((prev) => [newChat, ...prev]);
+        }
+      });
+    }
 
-    // Generate random color class
-    const colors = ['mint', 'cream', 'light-blue', 'peach', 'lavender', 'pink'];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    
-    const newSession = {
-      ...form,
-      id: generateId(),
-      qaCount: 10, // Default value for new sessions
-      updatedAt: new Date().toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      }),
-      color: randomColor
+    return () => {
+      socket.off('newChat');
     };
-    
-    setSessions([...sessions, newSession]);
-    setForm({ role: '', experience: '', topics: '', description: '' });
-    setModalOpen(false);
+  }, [user]);
+
+  const fetchChats = async () => {
+    try {
+      const response = await axios.get('http://localhost:5050/api/chats', {
+        params: { userId: user.id }
+      });
+      setSessions(response.data);
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!user) {
+      alert('Please sign in to create a session');
+      return;
+    }
+
+    try {
+      await axios.post('http://localhost:5050/api/chats', {
+        userId: user.id,
+        role: form.role,
+        experience: form.experience,
+        topic: form.topic,
+        description: form.description
+      });
+
+      setForm({ role: '', experience: '', topic: '', description: '' });
+      setModalOpen(false);
+    } catch (error) {
+      console.error('Error creating session:', error);
+      alert('Failed to create session');
+    }
   };
 
   const startChat = (session) => {
-    // This would typically navigate to a chat interface
     console.log(`Starting chat for ${session.role}`);
+  };
+
+  // Assign color classes for cards
+  const getColorClass = (index) => {
+    const colors = ['mint', 'cream', 'light-blue', 'peach', 'lavender', 'pink'];
+    return colors[index % colors.length];
+  };
+
+  // Generate initials from role (e.g., "Frontend Developer" -> "FD")
+  const getRoleInitials = (role) => {
+    // Remove any unexpected characters (e.g., hyphens) and trim
+    const cleanRole = role.replace(/[^a-zA-Z\s]/g, '').trim();
+    const words = cleanRole.split(/\s+/);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return cleanRole.substring(0, 2).toUpperCase();
+  };
+
+  // Format experience (e.g., "2" -> "2 Years")
+  const formatExperience = (exp) => {
+    return exp.includes('year') ? exp : `${exp} Years`;
   };
 
   return (
@@ -168,23 +118,27 @@ const Dashboard = () => {
       </header>
 
       <main className="cards-grid">
-        {sessions.map((session) => (
-          <div 
-            className={`card ${session.color}`} 
-            key={session.id}
+        {sessions.map((session, index) => (
+          <div
+            className={`card ${getColorClass(index)}`}
+            key={session._id}
             onClick={() => startChat(session)}
           >
             <div className="card-header">
-              <span className="card-icon">{session.id}</span>
+              <span className="card-icon">{getRoleInitials(session.role)}</span>
               <div>
                 <h3>{session.role}</h3>
-                <p className="topics">{session.topics}</p>
+                <p className="topics">{session.topic}</p>
               </div>
             </div>
             <div className="card-tags">
-              <span>Experience: {session.experience}</span>
-              <span>{session.qaCount} Q&A</span>
-              <span>Last Updated: {session.updatedAt}</span>
+              <span>Experience: {formatExperience(session.experience)}</span>
+              <span>{session.aiResponse?.length || 0} Q&A</span>
+              <span>Last Updated: {new Date(session.createdAt).toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              })}</span>
             </div>
             <p className="description">{session.description}</p>
           </div>
@@ -196,7 +150,6 @@ const Dashboard = () => {
         <span>Add New</span>
       </button>
 
-      {/* Modal */}
       {modalOpen && (
         <div className="modal-overlay" onClick={(e) => {
           if (e.target.className === 'modal-overlay') setModalOpen(false);
@@ -221,7 +174,6 @@ const Dashboard = () => {
                   required
                 />
               </div>
-              
               <div className="form-group">
                 <label htmlFor="experience">Years of Experience</label>
                 <input
@@ -233,19 +185,17 @@ const Dashboard = () => {
                   required
                 />
               </div>
-              
               <div className="form-group">
-                <label htmlFor="topics">Topics to Focus On</label>
+                <label htmlFor="topic">Topics to Focus On</label>
                 <input
-                  id="topics"
+                  id="topic"
                   type="text"
                   placeholder="(Comma-separated, e.g., React, Node.js, MongoDB)"
-                  value={form.topics}
-                  onChange={(e) => setForm({ ...form, topics: e.target.value })}
+                  value={form.topic}
+                  onChange={(e) => setForm({ ...form, topic: e.target.value })}
                   required
                 />
               </div>
-              
               <div className="form-group">
                 <label htmlFor="description">Description</label>
                 <textarea
@@ -256,18 +206,13 @@ const Dashboard = () => {
                   required
                 ></textarea>
               </div>
-              
               <button type="submit" className="submit-btn">Create Session</button>
             </form>
           </div>
         </div>
       )}
     </div>
-    
   );
 };
-
-
-
 
 export default Dashboard;
