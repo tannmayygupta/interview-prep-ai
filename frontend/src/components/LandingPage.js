@@ -1,8 +1,18 @@
 import React from 'react';
 import './LandingPage.css';
-import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/clerk-react";
+import { SignInButton, SignedOut, SignedIn, UserButton, useUser } from "@clerk/clerk-react";
+import { useNavigate } from 'react-router-dom';
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+  const { isSignedIn } = useUser();
+
+  const handleGetStarted = () => {
+    if (isSignedIn) {
+      navigate('/dashboard');
+    }
+  };
+
   return (
     <div className="landing-page">
       {/* Navbar */}
@@ -36,7 +46,16 @@ const LandingPage = () => {
               Ace Interviews with 
               <span className="highlight"> AI-Powered</span> Learning
             </h1>
-            <button className="get-started-btn">Get Started</button>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="get-started-btn">Get Started</button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <button className="get-started-btn" onClick={handleGetStarted}>
+                Get Started
+              </button>
+            </SignedIn>
           </div>
           <div className="hero-right">
             <p className="hero-description">

@@ -1,71 +1,43 @@
-// App.js
-import {
-  SignIn,
-  SignUp,
-  SignedIn,
-  SignedOut,
-  RedirectToSignIn,
-  UserButton,
-} from "@clerk/clerk-react";
-import { Routes, Route } from "react-router-dom";
-import LandingPage from "./components/LandingPage";
+import React from 'react';
+import { ClerkProvider, SignIn, SignUp } from '@clerk/clerk-react';
+import { Routes, Route, BrowserRouter as Router } from 'react-router-dom';
+import LandingPage from './components/LandingPage';
+import Dashboard from './components/Dashboard';
 
-function ProtectedPage() {
-  return (
-    <SignedIn>
-      <div className="p-4">
-        <UserButton />
-        <h1 className="text-2xl font-bold">Welcome to the Interview Prep App!</h1>
-      </div>
-    </SignedIn>
-  );
-}
-
-function RequireAuth({ children }) {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
-  );
-}
+// Clerk Publishable Key
+const clerkPublishableKey = 'pk_test_c3VyZS1naG91bC04NC5jbGVyay5hY2NvdW50cy5kZXYk';
 
 function App() {
   return (
-    <Routes>
-      {/* Landing Page Route */}
-      <Route path="/" element={<LandingPage />} />
+    <ClerkProvider publishableKey={clerkPublishableKey}>
+      <Router>
+        <Routes>
+          {/* Landing Page Route */}
+          <Route path="/" element={<LandingPage />} />
 
-      {/* Clerk Auth Routes */}
-      <Route
-        path="/sign-in"
-        element={
-          <div className="min-h-screen flex items-center justify-center">
-            <SignIn routing="path" path="/sign-in" />
-          </div>
-        }
-      />
-      <Route
-        path="/sign-up"
-        element={
-          <div className="min-h-screen flex items-center justify-center">
-            <SignUp routing="path" path="/sign-up" />
-          </div>
-        }
-      />
+          {/* Clerk Auth Routes */}
+          <Route
+            path="/sign-in"
+            element={
+              <div className="min-h-screen flex items-center justify-center">
+                <SignIn routing="path" path="/sign-in" redirectUrl="/dashboard" />
+              </div>
+            }
+          />
+          <Route
+            path="/sign-up"
+            element={
+              <div className="min-h-screen flex items-center justify-center">
+                <SignUp routing="path" path="/sign-up" redirectUrl="/dashboard" />
+              </div>
+            }
+          />
 
-      {/* Protected Dashboard Route */}
-      <Route
-        path="/dashboard"
-        element={
-          <RequireAuth>
-            <ProtectedPage />
-          </RequireAuth>
-        }
-      />
-    </Routes>
+          {/* Dashboard Route */}
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </Router>
+    </ClerkProvider>
   );
 }
 
